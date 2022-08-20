@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+import asyncio
+import pyppeteer
+import numpy
+
+base_pano  = 'https://pano.stoppedphoto.com/pannellum.htm?config=20220727_151553/config.json'
+add_rotate = '&autoRotate=0'
+add_fov    = '&hfov=120'
+add_pitch  = '&pitch=0'
+viewport   = { 'width': 1080, 'height': 1080 }
+
+async def main():
+	counter = 0
+	for x in numpy.arange(0,360,0.5):
+		full_url = f"{base_pano}{add_rotate}{add_fov}{add_pitch}&yaw={x}"
+		print(full_url)
+		filename = f"frame{counter:05}.png"
+		counter+=1
+		print(filename)
+		print("launch")
+		browser = await pyppeteer.launch({'executablePath': '/usr/bin/chromium', 'args': [ '--disk-cache-dir=/tmp/' ] })
+		print("newPage")
+		page = await browser.newPage()
+		print("setViewport")
+		await page.setViewport( viewport )
+		print("goto")
+		status = await page.goto(full_url, { 'waitUntil': 'networkidle0' })
+		print("evaluate")
+		await page.evaluate('''
+			Array.from(document.getElementsByClassName("pnlm-controls-container")).forEach(
+				function(element, index, array) {
+				element.style.display = "none"
+				})
+			Array.from(document.getElementsByClassName("pnlm-panorama-info")).forEach(
+				function(element, index, array) {
+				element.style.display = "none"
+				})
+			Array.from(document.getElementsByClassName("pnlm-hotspot")).forEach(
+				function(element, index, array) {
+				element.style.display = "none"
+				})
+				''')
+		print("screenshot")
+		await page.screenshot({'path': filename})
+		print("close")
+		await page.close()
+		await browser.close()
+asyncio.get_event_loop().run_until_complete(main())
