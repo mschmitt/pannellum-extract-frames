@@ -2,30 +2,40 @@
 import asyncio
 import pyppeteer
 import numpy
+import argparse
 
-base_pano  = 'https://pano.stoppedphoto.com/pannellum.htm?config=20220727_151553/config.json'
+parser = argparse.ArgumentParser(description='Extract frames from a pannellum panorama, as if in a circular motion.')
+parser.add_argument('--url', help='URL of pannellum panorama', nargs=1, required=True)
+parser.add_argument('--width', help='virtual browser width, default 1080', type=int, nargs=1, default=[1080])
+parser.add_argument('--height', help='virtual browser height, default 1080', type=int, nargs=1, default=[1080])
+parser.add_argument('--pitch', help='negative: look down, positive: look up, default 0', type=float, nargs=1, default=[0])
+parser.add_argument('--yaw', help='start yaw from where to start panning, default 0', type=float, nargs=1, default=[0])
+parser.add_argument('--browser', help='name of browser binary, default chromium', nargs=1, default=['chromium'])
+args = parser.parse_args()
+
+base_pano  = args.url[0]
+add_pitch  = f'&pitch={args.pitch[0]}'
+viewport   = { 'width': args.width[0], 'height': args.height[0] }
 add_rotate = '&autoRotate=0'
 add_fov    = '&hfov=120'
-add_pitch  = '&pitch=0'
-viewport   = { 'width': 1080, 'height': 1080 }
 
 async def main():
 	counter = 0
-	for x in numpy.arange(0,360,0.5):
+	for x in numpy.arange(args.yaw[0],args.yaw[0]+360,0.5):
 		full_url = f"{base_pano}{add_rotate}{add_fov}{add_pitch}&yaw={x}"
 		print(full_url)
 		filename = f"frame{counter:05}.png"
 		counter+=1
-		print(filename)
-		print("launch")
-		browser = await pyppeteer.launch({'executablePath': '/usr/bin/chromium', 'args': [ '--disk-cache-dir=/tmp/' ] })
-		print("newPage")
+		print(f'Saving frame to: {filename}')
+		# print("launch")
+		browser = await pyppeteer.launch({'executablePath': args.browser[0], 'args': [ '--disk-cache-dir=/tmp/' ] })
+		# print("newPage")
 		page = await browser.newPage()
-		print("setViewport")
+		# print("setViewport")
 		await page.setViewport( viewport )
-		print("goto")
+		# print("goto")
 		status = await page.goto(full_url, { 'waitUntil': 'networkidle0' })
-		print("evaluate")
+		# print("evaluate")
 		await page.evaluate('''
 			Array.from(document.getElementsByClassName("pnlm-controls-container")).forEach(
 				function(element, index, array) {
@@ -40,9 +50,9 @@ async def main():
 				element.style.display = "none"
 				})
 				''')
-		print("screenshot")
+		# print("screenshot")
 		await page.screenshot({'path': filename})
-		print("close")
+		# print("close")
 		await page.close()
 		await browser.close()
 asyncio.get_event_loop().run_until_complete(main())
