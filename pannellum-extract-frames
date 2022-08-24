@@ -3,6 +3,7 @@ import asyncio
 import pyppeteer
 import numpy
 import argparse
+import time
 
 parser = argparse.ArgumentParser(description='Extract frames from a pannellum panorama, as if in a circular motion.')
 parser.add_argument('--url', help='URL of pannellum panorama', nargs=1, required=True)
@@ -11,6 +12,8 @@ parser.add_argument('--height', help='virtual browser height, default 1080', typ
 parser.add_argument('--pitch', help='negative: look down, positive: look up, default 0', type=float, nargs=1, default=[0])
 parser.add_argument('--yaw', help='start yaw from where to start panning, default 0', type=float, nargs=1, default=[0])
 parser.add_argument('--browser', help='name of browser binary, default chromium', nargs=1, default=['chromium'])
+parser.add_argument('--format', help='format of exported frames jpg or png, default jpg', nargs=1, choices=['jpg', 'png'], default=['jpg'])
+parser.add_argument('--debug', help='show debug/progress output', action='store_true')
 args = parser.parse_args()
 
 base_pano  = args.url[0]
@@ -21,21 +24,26 @@ add_fov    = '&hfov=120'
 
 async def main():
 	counter = 0
+	if args.debug: print("launch")
+	browser = await pyppeteer.launch({'executablePath': args.browser[0]})
 	for x in numpy.arange(args.yaw[0],args.yaw[0]+360,0.5):
+		start = time.time()
 		full_url = f"{base_pano}{add_rotate}{add_fov}{add_pitch}&yaw={x}"
-		print(full_url)
-		filename = f"frame{counter:05}.png"
+		print(f'{time.time() - start:.3f}s {full_url}')
+		filename = f"frame{counter:05}.{args.format[0]}"
 		counter+=1
-		print(f'Saving frame to: {filename}')
-		# print("launch")
-		browser = await pyppeteer.launch({'executablePath': args.browser[0], 'args': [ '--disk-cache-dir=/tmp/' ] })
-		# print("newPage")
+		if args.debug: print(f'{time.time() - start:.3f}s will save frame to: {filename}')
+		if args.debug: print(f'{time.time() - start:.3f}s new page')
 		page = await browser.newPage()
-		# print("setViewport")
+		if args.debug: print(f'{time.time() - start:.3f}s set viewport')
 		await page.setViewport( viewport )
-		# print("goto")
-		status = await page.goto(full_url, { 'waitUntil': 'networkidle0' })
-		# print("evaluate")
+		if args.debug: print(f'{time.time() - start:.3f}s goto url')
+		status = await page.goto(full_url, { 'waitUntil': 'load' })
+		if args.debug: print(f'{time.time() - start:.3f}s start waiting for selector')
+		await page.waitForSelector('.pnlm-container')
+		if args.debug: print(f'{time.time() - start:.3f}s start waiting for function')
+		await page.waitForFunction('viewer.isLoaded()')
+		if args.debug: print(f'{time.time() - start:.3f}s evaluate js')
 		await page.evaluate('''
 			Array.from(document.getElementsByClassName("pnlm-controls-container")).forEach(
 				function(element, index, array) {
@@ -50,9 +58,12 @@ async def main():
 				element.style.display = "none"
 				})
 				''')
-		# print("screenshot")
-		await page.screenshot({'path': filename})
-		# print("close")
+		if args.debug: print(f'{time.time() - start:.3f}s take screenshot')
+		await page.screenshot({'path': filename, 'quality': 90})
+		if args.debug: print(f'{time.time() - start:.3f}s close page')
 		await page.close()
-		await browser.close()
+		end = time.time()
+		print(f'{time.time() - start:.3f}s frame {filename} saved')
+	if args.debug: print("close")
+	await browser.close()
 asyncio.get_event_loop().run_until_complete(main())
