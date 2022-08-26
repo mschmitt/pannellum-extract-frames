@@ -6,7 +6,7 @@
 
 ## Synopsis
 
-pannellum-extract-frames [-h] --url URL [--width WIDTH] [--height HEIGHT] [--pitch PITCH] [--yaw YAW] [--browser BROWSER] [--format {jpg,png}] [--debug]
+pannellum-extract-frames [-h] --url URL [--width WIDTH] [--height HEIGHT] [--pitch PITCH] [--yaw YAW] [--step STEP] [--browser BROWSER] [--format {jpg,png}] [--debug]
 
 ## Description
 

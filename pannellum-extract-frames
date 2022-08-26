@@ -11,6 +11,7 @@ parser.add_argument('--width', help='virtual browser width, default 1080', type=
 parser.add_argument('--height', help='virtual browser height, default 1080', type=int, nargs=1, default=[1080])
 parser.add_argument('--pitch', help='negative: look down, positive: look up, default 0', type=float, nargs=1, default=[0])
 parser.add_argument('--yaw', help='start yaw from where to start panning, default 0', type=float, nargs=1, default=[0])
+parser.add_argument('--step', help='degrees to rotate between frames, +/- allowed, default 0.5', type=float, nargs=1, default=[0.5])
 parser.add_argument('--browser', help='name of browser binary, default chromium', nargs=1, default=['chromium'])
 parser.add_argument('--format', help='format of exported frames jpg or png, default jpg', nargs=1, choices=['jpg', 'png'], default=['jpg'])
 parser.add_argument('--debug', help='show debug/progress output', action='store_true')
@@ -26,9 +27,9 @@ async def main():
 	counter = 0
 	if args.debug: print("launch")
 	browser = await pyppeteer.launch({'executablePath': args.browser[0]})
-	for x in numpy.arange(args.yaw[0],args.yaw[0]+360,0.5):
+	for x in numpy.arange(args.yaw[0],args.yaw[0]+360*(args.step[0])/abs(args.step[0]),args.step[0]):
 		start = time.time()
-		full_url = f"{base_pano}{add_rotate}{add_fov}{add_pitch}&yaw={x}"
+		full_url = f"{base_pano}{add_rotate}{add_fov}{add_pitch}&yaw={x:.4f}"
 		print(f'{time.time() - start:.3f}s {full_url}')
 		filename = f"frame{counter:05}.{args.format[0]}"
 		counter+=1
